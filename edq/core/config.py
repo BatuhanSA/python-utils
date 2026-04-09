@@ -19,6 +19,8 @@ IGNORE_CONFIG_OPTIONS_KEY: str = 'ignore_configs'
 
 DEFAULT_CONFIG_FILENAME: str = "edq-config.json"
 
+CONFIG_FIELD_SEPARATOR: str = "\t"
+
 _config_filename: str = DEFAULT_CONFIG_FILENAME  # pylint: disable=invalid-name
 _legacy_config_filename: typing.Union[str, None] = None  # pylint: disable=invalid-name
 
@@ -333,6 +335,72 @@ def _get_ancestor_config_file_path(
 
     return None
 
+def add_origin(
+    row: typing.List[str],
+    config_info: TieredConfigInfo,
+    show_origin: bool,
+    key: str,
+    ) -> None:
+    """ Add origin information when displaying configs. """
+
+    if (show_origin):
+        config_source_obj = config_info.sources[key]
+
+        origin = config_source_obj.path
+        if (origin is None):
+            origin = config_source_obj.label
+
+        row.append(origin)
+
+def add_header(
+    rows: typing.List[str],
+    skip_header: bool,
+    show_origin: bool,
+    ) -> None:
+    """ Skip headers when displaying configs. """
+
+    if (not skip_header):
+        header = ["Key", "Value"]
+        if (show_origin):
+            header.append("Origin")
+
+        rows.insert(0, CONFIG_FIELD_SEPARATOR.join(header))
+
+def add_config_display_arguments(parser: argparse.ArgumentParser) -> None:
+    """ Add config display arguments to the given parser. """
+
+    group = parser.add_argument_group('display options')
+
+    group.add_argument("--show-origin", dest = 'show_origin',
+        action = 'store_true',
+        help = "Display where each configuration's value was obtained from.",
+    )
+
+    group.add_argument("--skip-header", dest = 'skip_header',
+        action = 'store_true',
+        help = "Skip headers when displaying configs.",
+    )
+
+def add_config_location_argument_group(parser: argparse.ArgumentParser) -> None:
+    """ Add the configuration location argument group to the parser. """
+
+    group = parser.add_argument_group("config location options").add_mutually_exclusive_group()
+
+    group.add_argument('--local',
+        action = 'store_true', dest = 'scope_local',
+        help = ("Target config option(s) in a local config file.")
+    )
+
+    group.add_argument('--global',
+        action = 'store_true', dest = 'scope_global',
+        help =  ("Target config option(s) in the global config file."),
+    )
+
+    group.add_argument('--file', metavar = "<FILE>",
+        action = 'store', type = str, default = None, dest = 'scope_file',
+        help = ("Target config option(s) in a specified config file.")
+    )
+
 def set_cli_args(
         parser: argparse.ArgumentParser,
         extra_state: typing.Dict[str, typing.Any],
@@ -372,26 +440,6 @@ def set_cli_args(
             + ' The system-provided default value will be used for that option if one exists.'
             + ' This flag can be specified multiple times.'
             + ' Ignored options are processed last.')
-    )
-
-def add_config_location_argument_group(parser: argparse.ArgumentParser) -> None:
-    """ Add the configuration location argument group to the parser. """
-
-    group = parser.add_argument_group("config location options").add_mutually_exclusive_group()
-
-    group.add_argument('--local',
-        action = 'store_true', dest = 'scope_local',
-        help = ("Target config option(s) in a local config file.")
-    )
-
-    group.add_argument('--global',
-        action = 'store_true', dest = 'scope_global',
-        help =  ("Target config option(s) in the global config file."),
-    )
-
-    group.add_argument('--file', metavar = "<FILE>",
-        action = 'store', type = str, default = None, dest = 'scope_file',
-        help = ("Target config option(s) in a specified config file.")
     )
 
 def load_config_into_args(

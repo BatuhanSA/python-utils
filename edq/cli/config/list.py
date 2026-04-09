@@ -6,8 +6,7 @@ import argparse
 import sys
 
 import edq.core.argparser
-
-CONFIG_FIELD_SEPARATOR: str = "\t"
+import edq.core.config
 
 def run_cli(args: argparse.Namespace) -> int:
     """ Run the CLI. """
@@ -17,25 +16,16 @@ def run_cli(args: argparse.Namespace) -> int:
     rows = []
     for (key, value) in config_info.config.items():
         row = [key, str(value)]
-        if (args.show_origin):
-            config_source_obj = config_info.sources.get(key)
-
-            origin = config_source_obj.path
-            if (origin is None):
-                origin = config_source_obj.label
-
-            row.append(origin)
-
-        rows.append(CONFIG_FIELD_SEPARATOR.join(row))
+        edq.core.config.add_origin(row, config_info, args.show_origin, key)
+        rows.append(edq.core.config.CONFIG_FIELD_SEPARATOR.join(row))
 
     rows.sort()
 
-    if (not args.skip_header):
-        header = ["Key", "Value"]
-        if (args.show_origin):
-            header.append("Origin")
-
-        rows.insert(0, (CONFIG_FIELD_SEPARATOR.join(header)))
+    edq.core.config.add_header(
+        rows,
+        args.skip_header,
+        args.show_origin,
+    )
 
     print("\n".join(rows))
     return 0
@@ -49,24 +39,9 @@ def _get_parser() -> argparse.ArgumentParser:
     """ Get a parser and add addition flags. """
 
     parser = edq.core.argparser.get_default_parser(__doc__.strip())
-    modify_parser(parser)
+    edq.core.config.add_config_display_arguments(parser)
 
     return parser
-
-def modify_parser(parser: argparse.ArgumentParser) -> None:
-    """ Add this CLI's flags to the given parser. """
-
-    group = parser.add_argument_group('list options')
-
-    group.add_argument("--show-origin", dest = 'show_origin',
-        action = 'store_true',
-        help = "Display where each configuration's value was obtained from.",
-    )
-
-    group.add_argument("--skip-header", dest = 'skip_header',
-        action = 'store_true',
-        help = 'Skip headers when displaying configs.',
-    )
 
 if (__name__ == '__main__'):
     sys.exit(main())
